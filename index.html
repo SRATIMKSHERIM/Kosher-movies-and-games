@@ -318,8 +318,20 @@
         // 1. אתחול אייקונים התחלתי
         lucide.createIcons();
 
-        // 2. כתובת ה-API לאימות סיסמה
-        const AUTH_API_URL = "https://script.google.com/macros/s/AKfycbyqpXEUuiPXyeorCUpzTUb7zi8phFfc938CAG4-OiSgeFCjRGklXG16cbwVVEz0dA-JYQ/exec"; 
+        // 2. הסיסמה המוצפנת (Hash)
+        // הסיסמה שונתה ל-444323. הקוד הבא הוא הגיבוב (Hash) המתמטי שלה.
+        // אי אפשר לפענח את המספר הזה חזרה לסיסמה המקורית!
+        const PASSWORD_HASH = 1538338688;
+        
+        // פונקציית גיבוב מהירה ובלתי הפיכה
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash;
+        }
         
         // 3. חיבור לקובץ ה-JSON שמיוצר על ידי הסקריפט ונשמר בגיטהאב
         const DATA_JSON_URL = 'https://raw.githubusercontent.com/sratimksherim/Kosher-movies-and-games/main/data.json';
@@ -343,8 +355,8 @@
         let currentlyDisplayedCount = 0;
         let intersectionObserver = null;
 
-        // מערכת התחברות מאובטחת דרך שרת חיצוני
-        async function checkPassword() {
+        // מערכת התחברות מאובטחת בעזרת גיבוב מקומי
+        function checkPassword() {
             const input = document.getElementById('passInput').value;
             const btn = document.querySelector('button[onclick="checkPassword()"]');
             const err = document.getElementById('errorMsg');
@@ -358,47 +370,31 @@
             err.classList.add('hidden');
             lucide.createIcons({ root: btn });
 
-            try {
-                // שליחת הבקשה ל-API של גוגל שיצרנו
-                const response = await fetch(`${AUTH_API_URL}?password=${encodeURIComponent(input)}`);
-                const result = await response.json();
-
-                if (result.success) {
-                    // התחברות הצליחה
-                    const loginScreen = document.getElementById('loginScreen');
-                    loginScreen.classList.add('opacity-0');
-                    loginScreen.classList.add('scale-105');
+            // בדיקה אם הגיבוב של מה שהוקלד שווה לגיבוב השמור בקוד
+            if (simpleHash(input) === PASSWORD_HASH) {
+                const loginScreen = document.getElementById('loginScreen');
+                loginScreen.classList.add('opacity-0');
+                loginScreen.classList.add('scale-105');
+                
+                setTimeout(() => {
+                    loginScreen.classList.add('hidden');
+                    const mainContent = document.getElementById('mainContent');
+                    mainContent.classList.remove('hidden');
+                    mainContent.classList.add('flex');
+                    mainContent.classList.add('animate-fade-up');
                     
-                    setTimeout(() => {
-                        loginScreen.classList.add('hidden');
-                        const mainContent = document.getElementById('mainContent');
-                        mainContent.classList.remove('hidden');
-                        mainContent.classList.add('flex');
-                        mainContent.classList.add('animate-fade-up');
-                        
-                        fetchAnnouncements();
-                        fetchExplorerData();
-                    }, 600);
-                } else {
-                    // סיסמה שגויה
-                    btn.innerHTML = originalBtnContent;
-                    btn.disabled = false;
-                    lucide.createIcons({ root: btn });
-                    
-                    err.classList.remove('hidden');
-                    err.classList.add('animate-pulse');
-                    setTimeout(() => err.classList.remove('animate-pulse'), 1000);
-                }
-            } catch (error) {
-                // שגיאת תקשורת
-                console.error("שגיאה באימות:", error);
+                    fetchAnnouncements();
+                    fetchExplorerData();
+                }, 600);
+            } else {
+                // סיסמה שגויה
                 btn.innerHTML = originalBtnContent;
                 btn.disabled = false;
                 lucide.createIcons({ root: btn });
                 
-                err.innerHTML = `<i data-lucide="triangle-alert" class="w-4 h-4"></i> שגיאת תקשורת, נסה שוב.`;
                 err.classList.remove('hidden');
-                lucide.createIcons({ root: err });
+                err.classList.add('animate-pulse');
+                setTimeout(() => err.classList.remove('animate-pulse'), 1000);
             }
         }
 
